@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter/foundation.dart';
 
 class MobileCaptureService {
   MediaStream? _currentStream;
@@ -30,7 +31,7 @@ class MobileCaptureService {
       _currentStream = await navigator.mediaDevices.getDisplayMedia(mediaConstraints);
       return _currentStream!;
     } catch (e) {
-      print('Error starting mobile screen capture: $e');
+      debugPrint('Error starting mobile screen capture: $e');
       rethrow;
     }
   }

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../widgets/telemetry_hud_overlay.dart';
 import '../../presentation/controllers/session_controller.dart';
@@ -74,7 +74,7 @@ class _SenderScreenState extends ConsumerState<SenderScreen> {
                       border: Border.all(
                         color: isBroadcasting
                             ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).colorScheme.onSurface.withOpacity(0.2),
+                            : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.2),
                         width: 2,
                       ),
                     ),
@@ -85,7 +85,7 @@ class _SenderScreenState extends ConsumerState<SenderScreen> {
                           size: 64,
                           color: isBroadcasting
                               ? Theme.of(context).colorScheme.primary
-                              : Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                              : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                         ),
                         const SizedBox(height: 16),
                         Text(
@@ -111,7 +111,7 @@ class _SenderScreenState extends ConsumerState<SenderScreen> {
                             'Ready to start broadcasting your screen to connected peers.',
                             textAlign: TextAlign.center,
                             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                                 ),
                           ),
                         ],

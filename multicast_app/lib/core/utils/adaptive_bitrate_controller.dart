@@ -4,6 +4,7 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../../data/models/stream_telemetry.dart';
 import '../../data/services/webrtc_data_channel_manager.dart';
 import '../../data/services/webrtc_peer_connection_manager.dart';
+import 'package:flutter/foundation.dart';
 
 class AdaptiveBitrateController {
   final Ref _ref;
@@ -100,9 +101,9 @@ class AdaptiveBitrateController {
 
         try {
           await sender.setParameters(parameters);
-          print('Sender applied adaptive constraints for tier $tier');
+          debugPrint('Sender applied adaptive constraints for tier $tier');
         } catch (e) {
-          print('Failed to set sender parameters: $e');
+          debugPrint('Failed to set sender parameters: $e');
         }
       }
     }

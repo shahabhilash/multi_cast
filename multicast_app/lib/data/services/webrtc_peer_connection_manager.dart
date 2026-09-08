@@ -3,6 +3,7 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/webrtc_config.dart';
 import '../../core/utils/sdp_utils.dart';
+import 'package:flutter/foundation.dart';
 
 class WebrtcPeerConnectionManager {
   RTCPeerConnection? _peerConnection;
@@ -50,7 +51,7 @@ class WebrtcPeerConnectionManager {
         case RTCPeerConnectionState.RTCPeerConnectionStateDisconnected:
         case RTCPeerConnectionState.RTCPeerConnectionStateFailed:
         case RTCPeerConnectionState.RTCPeerConnectionStateClosed:
-          print('WebRTC Connection State: ${state.name}');
+          debugPrint('WebRTC Connection State: ${state.name}');
           break;
       }
     };

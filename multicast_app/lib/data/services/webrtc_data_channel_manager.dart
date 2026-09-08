@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart';
 
 class WebrtcDataChannelManager {
   RTCDataChannel? _dataChannel;
@@ -38,12 +39,12 @@ class WebrtcDataChannelManager {
         final decoded = jsonDecode(message.text);
         _handleIncomingMessage(decoded);
       } catch (e) {
-        print('Error decoding DataChannel message: $e');
+        debugPrint('Error decoding DataChannel message: $e');
       }
     };
 
     _dataChannel!.onDataChannelState = (RTCDataChannelState state) {
-      print('DataChannel State: ${state.name}');
+      debugPrint('DataChannel State: ${state.name}');
     };
   }
 
@@ -60,13 +61,13 @@ class WebrtcDataChannelManager {
         // RTT handling will be caught by the LatencyMonitor observing onMessage
         break;
       case 'RESOLUTION_CHANGE_REQUEST':
-        print('Received resolution change request: ${message['resolution']}');
+        debugPrint('Received resolution change request: ${message['resolution']}');
         break;
       case 'REMOTE_INPUT_EVENT':
-        print('Received remote input event: ${message['action']}');
+        debugPrint('Received remote input event: ${message['action']}');
         break;
       default:
-        print('Unknown DataChannel message type: $type');
+        debugPrint('Unknown DataChannel message type: $type');
     }
   }
 

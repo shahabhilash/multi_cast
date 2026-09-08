@@ -9,6 +9,7 @@ import '../controllers/session_controller.dart';
 import '../widgets/source_selector_dialog.dart';
 import '../../data/services/screen_capture_service.dart';
 import '../../data/models/peer_device.dart';
+import '../../data/models/capture_source.dart';
 import '../../data/services/supabase_room_service.dart';
 import '../../core/constants/app_constants.dart';
 import 'sender_screen.dart';
@@ -48,11 +49,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   Navigator.pop(context);
                   
                   final captureService = ref.read(screenCaptureServiceProvider);
-                  var source;
+                  CaptureSource? source;
                   if (captureService.isDesktop) {
                     source = await showSourceSelectorDialog(context);
                     if (source == null) return; // User cancelled
                   }
+
+                  if (!context.mounted) return;
 
                   final signalingUrl = 'ws://${peer.ipAddress}:8080';
                   final localIp = ref.read(discoveryProvider).localIp ?? 'sender_${DateTime.now().millisecondsSinceEpoch}';

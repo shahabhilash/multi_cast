@@ -1,5 +1,6 @@
 import 'package:bonsoir/bonsoir.dart';
 import '../../core/constants/network_constants.dart';
+import 'package:flutter/foundation.dart';
 
 class MdnsBroadcastService {
   BonsoirBroadcast? _broadcast;
@@ -34,9 +35,9 @@ class MdnsBroadcastService {
       await _broadcast!.ready;
       await _broadcast!.start();
       _isBroadcasting = true;
-      print('mDNS broadcast started for $deviceName');
+      debugPrint('mDNS broadcast started for $deviceName');
     } catch (e) {
-      print('Failed to start mDNS broadcast: $e');
+      debugPrint('Failed to start mDNS broadcast: $e');
       _isBroadcasting = false;
       rethrow;
     }
@@ -47,9 +48,9 @@ class MdnsBroadcastService {
     if (_broadcast != null) {
       try {
         await _broadcast!.stop();
-        print('mDNS broadcast stopped.');
+        debugPrint('mDNS broadcast stopped.');
       } catch (e) {
-        print('Error stopping mDNS broadcast: $e');
+        debugPrint('Error stopping mDNS broadcast: $e');
       } finally {
         _broadcast = null;
         _isBroadcasting = false;

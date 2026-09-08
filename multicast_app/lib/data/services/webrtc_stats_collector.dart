@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../models/stream_telemetry.dart';
+import 'package:flutter/foundation.dart';
 
 class WebrtcStatsCollector {
   final RTCPeerConnection _peerConnection;
@@ -114,7 +115,7 @@ class WebrtcStatsCollector {
       _statsController.add(telemetry);
 
     } catch (e) {
-      print('Failed to collect WebRTC stats: $e');
+      debugPrint('Failed to collect WebRTC stats: $e');
     }
   }
 

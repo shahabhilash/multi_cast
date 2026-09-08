@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../models/signaling_message.dart';
+import 'package:flutter/foundation.dart';
 
 class SignalingClient {
   WebSocketChannel? _channel;
@@ -53,11 +54,11 @@ class SignalingClient {
 
             _messageController.add(message);
           } catch (e) {
-            print('Failed to parse signaling message: $e');
+            debugPrint('Failed to parse signaling message: $e');
           }
         },
         onError: (error) {
-          print('Signaling socket error: $error');
+          debugPrint('Signaling socket error: $error');
           _messageController.add(SignalingMessage(
             type: SignalingMessageType.error,
             errorMessage: 'Signaling connection lost. Attempting to reconnect...',
@@ -66,16 +67,16 @@ class SignalingClient {
           _attemptReconnect();
         },
         onDone: () {
-          print('Signaling socket closed.');
+          debugPrint('Signaling socket closed.');
           disconnect(isIntentional: false);
           _attemptReconnect();
         },
       );
-      print('Connected to signaling server at $serverUrl');
+      debugPrint('Connected to signaling server at $serverUrl');
       _reconnectAttempts = 0; // Reset on success
       _startHeartbeat();
     } catch (e) {
-      print('Failed to connect to signaling server: $e');
+      debugPrint('Failed to connect to signaling server: $e');
       if (!isReconnect) rethrow;
     }
   }
@@ -93,7 +94,7 @@ class SignalingClient {
     // Exponential backoff: 2s, 4s, 8s, 16s, 32s
     final delay = Duration(seconds: 2 * (1 << _reconnectAttempts));
     _reconnectAttempts++;
-    print('Attempting reconnect $_reconnectAttempts/$_maxReconnectAttempts in ${delay.inSeconds}s...');
+    debugPrint('Attempting reconnect $_reconnectAttempts/$_maxReconnectAttempts in ${delay.inSeconds}s...');
     
     _reconnectTimer?.cancel();
     _reconnectTimer = Timer(delay, () {
@@ -107,7 +108,7 @@ class SignalingClient {
       _sendMessage(SignalingMessage(type: SignalingMessageType.ping));
       
       _pongTimeoutTimer = Timer(_pongTimeout, () {
-        print('Pong timeout! Connection lost over local Wi-Fi.');
+        debugPrint('Pong timeout! Connection lost over local Wi-Fi.');
         disconnect(isIntentional: false);
         _attemptReconnect();
       });
@@ -165,7 +166,7 @@ class SignalingClient {
     if (_channel != null) {
       _channel!.sink.add(message.toJson());
     } else {
-      print('Cannot send message, WebSocket is not connected.');
+      debugPrint('Cannot send message, WebSocket is not connected.');
     }
   }
 
@@ -184,7 +185,7 @@ class SignalingClient {
     _channel?.sink.close();
     _channel = null;
     
-    print('Disconnected from signaling server.');
+    debugPrint('Disconnected from signaling server.');
   }
 
   /// Cleans up the stream controller when the client is permanently destroyed.

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/signaling_message.dart';
+import 'package:flutter/foundation.dart';
 
 class LocalSignalingServer {
   HttpServer? _server;
@@ -17,14 +18,14 @@ class LocalSignalingServer {
     try {
       _server = await HttpServer.bind(InternetAddress.anyIPv4, port);
       _isRunning = true;
-      print('Local Signaling Server running on port $port');
+      debugPrint('Local Signaling Server running on port $port');
 
       _server!.listen((HttpRequest request) {
         if (WebSocketTransformer.isUpgradeRequest(request)) {
           WebSocketTransformer.upgrade(request).then((WebSocket socket) {
             _handleConnection(socket, request.connectionInfo?.remoteAddress.address ?? 'unknown');
           }).catchError((e) {
-            print('Failed to upgrade to WebSocket: $e');
+            debugPrint('Failed to upgrade to WebSocket: $e');
           });
         } else {
           request.response
@@ -33,7 +34,7 @@ class LocalSignalingServer {
         }
       });
     } catch (e) {
-      print('Failed to start local signaling server: $e');
+      debugPrint('Failed to start local signaling server: $e');
       _isRunning = false;
       rethrow;
     }
@@ -51,11 +52,11 @@ class LocalSignalingServer {
     await _server?.close(force: true);
     _server = null;
     _isRunning = false;
-    print('Local Signaling Server stopped.');
+    debugPrint('Local Signaling Server stopped.');
   }
 
   void _handleConnection(WebSocket socket, String clientIp) {
-    print('[Connection] New client connected from $clientIp');
+    debugPrint('[Connection] New client connected from $clientIp');
     String? currentPeerId;
 
     socket.listen(
@@ -77,7 +78,7 @@ class LocalSignalingServer {
             _handleMessage(currentPeerId!, socket, message);
           }
         } catch (e) {
-          print('Invalid message received: $e');
+          debugPrint('Invalid message received: $e');
         }
       },
       onDone: () {
@@ -86,7 +87,7 @@ class LocalSignalingServer {
         }
       },
       onError: (error) {
-        print('Socket error for peer ${currentPeerId ?? 'unknown'}: $error');
+        debugPrint('Socket error for peer ${currentPeerId ?? 'unknown'}: $error');
         if (currentPeerId != null) {
           _handleDisconnect(currentPeerId!);
         }
@@ -107,7 +108,7 @@ class LocalSignalingServer {
         }
         break;
       default:
-        print('Unhandled message type: ${message.type}');
+        debugPrint('Unhandled message type: ${message.type}');
     }
   }
 
@@ -119,7 +120,7 @@ class LocalSignalingServer {
     }
     _rooms[roomId]!.add(peerId);
 
-    print('Peer $peerId joined room $roomId');
+    debugPrint('Peer $peerId joined room $roomId');
 
     _sendToClient(peerId, SignalingMessage(
       type: SignalingMessageType.roomJoined,
@@ -148,7 +149,7 @@ class LocalSignalingServer {
     if (client != null && client.socket.readyState == WebSocket.open) {
       client.socket.add(message.toJson());
     } else {
-      print('Cannot send message to peer $peerId - client not found or socket closed');
+      debugPrint('Cannot send message to peer $peerId - client not found or socket closed');
     }
   }
 
@@ -173,9 +174,9 @@ class LocalSignalingServer {
           _rooms.remove(roomId);
         }
       }
-      print('Peer $peerId left room $roomId (disconnected)');
+      debugPrint('Peer $peerId left room $roomId (disconnected)');
     } else {
-      print('Peer $peerId disconnected');
+      debugPrint('Peer $peerId disconnected');
     }
   }
 }

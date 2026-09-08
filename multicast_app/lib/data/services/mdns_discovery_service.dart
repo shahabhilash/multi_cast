@@ -3,6 +3,7 @@ import 'package:bonsoir/bonsoir.dart';
 import '../../core/constants/network_constants.dart';
 import '../../core/enums/device_type.dart';
 import '../models/peer_device.dart';
+import 'package:flutter/foundation.dart';
 
 class MdnsDiscoveryService {
   BonsoirDiscovery? _discovery;
@@ -36,9 +37,9 @@ class MdnsDiscoveryService {
       
       await _discovery!.start();
       _isDiscovering = true;
-      print('mDNS discovery started.');
+      debugPrint('mDNS discovery started.');
     } catch (e) {
-      print('Failed to start mDNS discovery: $e');
+      debugPrint('Failed to start mDNS discovery: $e');
       _isDiscovering = false;
       onError?.call(e.toString());
     }
@@ -50,9 +51,9 @@ class MdnsDiscoveryService {
       try {
         await _subscription?.cancel();
         await _discovery!.stop();
-        print('mDNS discovery stopped.');
+        debugPrint('mDNS discovery stopped.');
       } catch (e) {
-        print('Error stopping mDNS discovery: $e');
+        debugPrint('Error stopping mDNS discovery: $e');
       } finally {
         _subscription = null;
         _discovery = null;

@@ -4,6 +4,7 @@ import '../../data/services/network_info_service.dart';
 import '../../data/services/mdns_broadcast_service.dart';
 import '../../data/services/mdns_discovery_service.dart';
 import '../../data/services/local_signaling_server.dart';
+import 'package:flutter/foundation.dart';
 
 final networkInfoServiceProvider = Provider((ref) => NetworkInfoService());
 final mdnsBroadcastServiceProvider = Provider((ref) => MdnsBroadcastService());
@@ -77,7 +78,7 @@ class DiscoveryController extends StateNotifier<DiscoveryState> {
         signalingPort: 8080,
       );
     } catch (e) {
-      print('Broadcast or Signaling Server failed to start: $e');
+      debugPrint('Broadcast or Signaling Server failed to start: $e');
     }
 
     _discoveryService ??= MdnsDiscoveryService(

@@ -3,6 +3,7 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../models/capture_source.dart';
 import 'package:flutter/services.dart';
 import 'base_desktop_capturer.dart';
+import 'package:flutter/foundation.dart';
 
 class MacOsCaptureService implements BaseDesktopCapturer {
   static const MethodChannel _channel = MethodChannel('multicast/macos_permissions');
@@ -19,7 +20,7 @@ class MacOsCaptureService implements BaseDesktopCapturer {
       // Fallback if native side isn't implemented yet
       return true; 
     } catch (e) {
-      print('Error checking screen capture permission: $e');
+      debugPrint('Error checking screen capture permission: $e');
       return false;
     }
   }
@@ -32,7 +33,7 @@ class MacOsCaptureService implements BaseDesktopCapturer {
     } on MissingPluginException {
       // Fallback
     } catch (e) {
-      print('Error requesting screen capture permission: $e');
+      debugPrint('Error requesting screen capture permission: $e');
     }
   }
 
@@ -93,7 +94,7 @@ class MacOsCaptureService implements BaseDesktopCapturer {
       final stream = await navigator.mediaDevices.getDisplayMedia(mediaConstraints);
       return stream;
     } catch (e) {
-      print('Error starting macOS desktop capture: $e');
+      debugPrint('Error starting macOS desktop capture: $e');
       rethrow;
     }
   }

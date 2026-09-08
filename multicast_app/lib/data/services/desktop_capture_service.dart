@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../models/capture_source.dart';
 import 'base_desktop_capturer.dart';
+import 'package:flutter/foundation.dart';
 
 class DesktopCaptureService implements BaseDesktopCapturer {
   @override
@@ -48,7 +49,7 @@ class DesktopCaptureService implements BaseDesktopCapturer {
       final stream = await navigator.mediaDevices.getDisplayMedia(mediaConstraints);
       return stream;
     } catch (e) {
-      print('Error starting desktop capture: $e');
+      debugPrint('Error starting desktop capture: $e');
       rethrow;
     }
   }

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 
 class NetworkInfoService {
   /// Fetches the local IPv4 address of the device on the Wi-Fi or local network.
@@ -32,7 +33,7 @@ class NetworkInfoService {
         }
       }
     } catch (e) {
-      print('Error fetching local IP address: $e');
+      debugPrint('Error fetching local IP address: $e');
     }
     return null;
   }
