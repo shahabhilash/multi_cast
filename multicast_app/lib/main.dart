@@ -10,7 +10,7 @@ void main() async {
 
   await Supabase.initialize(
     url: AppConstants.supabaseUrl,
-    publishableKey: AppConstants.supabaseAnonKey,
+    anonKey: AppConstants.supabaseAnonKey,
   );
 
   runApp(

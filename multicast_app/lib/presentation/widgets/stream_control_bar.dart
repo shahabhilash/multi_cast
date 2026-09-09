@@ -96,7 +96,7 @@ class _StreamControlBarState extends State<StreamControlBar> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.7),
+                  color: Colors.black.withOpacity(0.7),
                   borderRadius: BorderRadius.circular(30),
                 ),
                 child: Row(
