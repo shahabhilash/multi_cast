@@ -84,6 +84,13 @@ export class RoomManager {
       roomId,
       peerId,
     });
+
+    // 4. Notify others in the room
+    this.broadcastToRoom(roomId, {
+      type: MessageType.PEER_JOINED,
+      roomId,
+      peerId,
+    }, peerId);
   }
 
   private routeMessage(targetPeerId: string, message: SignalingMessage): void {
