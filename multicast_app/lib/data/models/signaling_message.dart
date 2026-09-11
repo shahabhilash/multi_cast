@@ -7,6 +7,7 @@ class SignalingMessageType {
   static const String answer = 'ANSWER';
   static const String iceCandidate = 'ICE_CANDIDATE';
   static const String peerLeft = 'PEER_LEFT';
+  static const String peerJoined = 'PEER_JOINED';
   static const String disconnect = 'DISCONNECT';
   static const String error = 'ERROR';
   static const String ping = 'PING';

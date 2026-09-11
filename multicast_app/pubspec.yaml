@@ -29,7 +29,7 @@ dependencies:
   window_manager: ^0.5.2
 
   # Backend & Telemetry
-  supabase_flutter: ^2.15.2
+  # Removed supabase_flutter
 
 dev_dependencies:
   flutter_test:

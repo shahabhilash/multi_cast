@@ -12,7 +12,6 @@ import '../../data/services/screen_capture_service.dart';
 import '../../data/services/webrtc_stats_collector.dart';
 import '../../core/utils/adaptive_bitrate_controller.dart';
 import '../../data/models/stream_telemetry.dart';
-import '../../data/services/supabase_room_service.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 final signalingClientProvider = Provider((ref) {
@@ -67,8 +66,6 @@ class SessionController extends StateNotifier<SessionState> {
   StreamSubscription<RTCPeerConnectionState>? _webrtcStateSubscription;
   WebrtcStatsCollector? _statsCollector;
   StreamSubscription<StreamTelemetry>? _telemetrySubscription;
-  Timer? _telemetryLogTimer;
-  final _supabaseRoomService = SupabaseRoomService();
 
   SessionController(this._ref) : super(SessionState()) {
     final webrtcManager = _ref.read(webrtcPeerConnectionManagerProvider);
@@ -137,24 +134,10 @@ class SessionController extends StateNotifier<SessionState> {
     });
     _statsCollector!.startPolling();
 
-    _telemetryLogTimer?.cancel();
-    _telemetryLogTimer = Timer.periodic(const Duration(seconds: 10), (_) {
-      if (state.telemetry != null && state.roomId != null) {
-        _supabaseRoomService.logTelemetry(
-          roomCode: state.roomId!,
-          fps: state.telemetry!.fps,
-          latencyMs: state.telemetry!.latencyMs,
-          bitrateKbps: state.telemetry!.bitrateKbps,
-          packetsLost: state.telemetry!.packetsLost.toDouble(),
-        );
-      }
-    });
   }
 
   void _stopTelemetry() {
     _telemetrySubscription?.cancel();
-    _telemetryLogTimer?.cancel();
-    _telemetryLogTimer = null;
     _statsCollector?.dispose();
     _statsCollector = null;
   }
@@ -212,12 +195,6 @@ class SessionController extends StateNotifier<SessionState> {
     
     if (offer != null && state.localPeerId != null) {
       _ref.read(signalingClientProvider).sendOffer(targetPeer.id, {'sdp': offer.sdp, 'type': offer.type}, state.localPeerId!);
-      if (state.roomId != null) {
-        await _supabaseRoomService.createRoom(
-          roomCode: state.roomId!,
-          hostName: state.localPeerId ?? 'Host',
-        );
-      }
     } else {
       logError('Failed to create offer or localPeerId is null.');
     }
@@ -234,6 +211,18 @@ class SessionController extends StateNotifier<SessionState> {
       case SignalingMessageType.peerLeft:
         logError('Peer disconnected.');
         terminateSession();
+        break;
+      case SignalingMessageType.peerJoined:
+        if (state.role == StreamRole.sender && message.peerId != null) {
+          final newPeer = PeerDevice(
+            id: message.peerId!,
+            name: 'Receiver',
+            ipAddress: 'Unknown',
+            port: 0,
+            deviceType: DeviceType.unknown,
+          );
+          startCall(newPeer); // Sender initiates WebRTC offer
+        }
         break;
       case SignalingMessageType.offer:
         if (message.sdp != null && message.senderPeerId != null) {
@@ -307,9 +296,6 @@ class SessionController extends StateNotifier<SessionState> {
   }
 
   void terminateSession() {
-    if (state.roomId != null && state.role == StreamRole.sender) {
-      _supabaseRoomService.closeRoom(state.roomId!);
-    }
     _stopTelemetry();
     _signalingSubscription?.cancel();
     _ref.read(signalingClientProvider).disconnect();

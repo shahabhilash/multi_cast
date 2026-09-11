@@ -10,7 +10,6 @@ import '../widgets/source_selector_dialog.dart';
 import '../../data/services/screen_capture_service.dart';
 import '../../data/models/peer_device.dart';
 import '../../data/models/capture_source.dart';
-import '../../data/services/supabase_room_service.dart';
 import '../../core/constants/app_constants.dart';
 import 'sender_screen.dart';
 import 'receiver_screen.dart';
@@ -23,7 +22,13 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  final _supabaseRoomService = SupabaseRoomService();
+  final _roomCodeController = TextEditingController();
+
+  @override
+  void dispose() {
+    _roomCodeController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -238,76 +243,58 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
                 
               const SizedBox(height: 32),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Active Cloud Streams',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                ],
+              Text(
+                'Join Cloud Stream',
+                style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 16),
-              StreamBuilder<List<Map<String, dynamic>>>(
-                stream: _supabaseRoomService.getActiveRoomsStream(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (snapshot.hasError) {
-                    return Center(child: Text('Error loading streams: ${snapshot.error}'));
-                  }
-                  
-                  final rooms = snapshot.data ?? [];
-                  if (rooms.isEmpty) {
-                    return const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(32.0),
-                        child: Text(
-                          'No active cloud streams right now.',
-                          style: TextStyle(color: Colors.grey),
-                          textAlign: TextAlign.center,
-                        ),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _roomCodeController,
+                      decoration: const InputDecoration(
+                        labelText: 'Room Code',
+                        hintText: 'e.g. 123-456',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.meeting_room),
                       ),
-                    );
-                  }
-                  
-                  return ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: rooms.length,
-                    itemBuilder: (context, index) {
-                      final room = rooms[index];
-                      return Card(
-                        child: ListTile(
-                          leading: const Icon(Icons.cloud_circle, color: Colors.blue),
-                          title: Text(room['title'] ?? 'MultiCast Live Screen'),
-                          subtitle: Text('Host: ${room['host_name'] ?? 'Unknown'} • Room: ${room['room_code']}'),
-                          trailing: ElevatedButton(
-                            onPressed: () {
-                              final localIp = ref.read(discoveryProvider).localIp ?? 'receiver_${DateTime.now().millisecondsSinceEpoch}';
-                              
-                              ref.read(sessionProvider.notifier).initializeSession(
-                                StreamRole.receiver,
-                                serverUrl: AppConstants.defaultSignalingUrl,
-                                roomId: room['room_code'],
-                                localPeerId: localIp,
-                              );
+                      keyboardType: TextInputType.text,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      final roomCode = _roomCodeController.text.trim();
+                      if (roomCode.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Please enter a valid room code.')),
+                        );
+                        return;
+                      }
 
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const ReceiverScreen(),
-                                ),
-                              );
-                            },
-                            child: const Text('Join'),
-                          ),
+                      final localIp = ref.read(discoveryProvider).localIp ?? 'receiver_${DateTime.now().millisecondsSinceEpoch}';
+                      
+                      ref.read(sessionProvider.notifier).initializeSession(
+                        StreamRole.receiver,
+                        serverUrl: AppConstants.defaultSignalingUrl,
+                        roomId: roomCode,
+                        localPeerId: localIp,
+                      );
+
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ReceiverScreen(),
                         ),
                       );
                     },
-                  );
-                },
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                    ),
+                    child: const Text('Join'),
+                  ),
+                ],
               ),
             ],
           ),
