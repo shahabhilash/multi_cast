@@ -66,6 +66,7 @@ class SessionController extends StateNotifier<SessionState> {
   StreamSubscription<RTCPeerConnectionState>? _webrtcStateSubscription;
   WebrtcStatsCollector? _statsCollector;
   StreamSubscription<StreamTelemetry>? _telemetrySubscription;
+  CaptureSource? _selectedSource;
 
   SessionController(this._ref) : super(SessionState()) {
     final webrtcManager = _ref.read(webrtcPeerConnectionManagerProvider);
@@ -142,6 +143,10 @@ class SessionController extends StateNotifier<SessionState> {
     _statsCollector = null;
   }
 
+  void setCaptureSource(CaptureSource? source) {
+    _selectedSource = source;
+  }
+
   void initializeSession(StreamRole role, {String? serverUrl, String? roomId, String? localPeerId}) {
     state = state.copyWith(
       role: role,
@@ -174,18 +179,38 @@ class SessionController extends StateNotifier<SessionState> {
     }
   }
 
+  Future<bool> preCaptureScreen({CaptureSource? source}) async {
+    final webrtcManager = _ref.read(webrtcPeerConnectionManagerProvider);
+    final effectiveSource = source ?? _selectedSource;
+    
+    try {
+      final captureService = _ref.read(screenCaptureServiceProvider);
+      if (!webrtcManager.hasLocalStream) {
+        final localStream = await captureService.startCapture(source: effectiveSource);
+        await webrtcManager.addLocalStream(localStream);
+      }
+      return true;
+    } catch (e) {
+      logError('Failed to capture screen stream: $e');
+      return false;
+    }
+  }
+
   /// Starts the call (Sender Flow) by creating and sending an SDP offer
   Future<void> startCall(PeerDevice targetPeer, {CaptureSource? source}) async {
     bindRemotePeer(targetPeer);
     
     final webrtcManager = _ref.read(webrtcPeerConnectionManagerProvider);
+    final effectiveSource = source ?? _selectedSource;
     
     // If a source is provided, start capture and add it to the WebRTC connection
     // For desktop we need a source, for mobile/web we just start capture
     try {
       final captureService = _ref.read(screenCaptureServiceProvider);
-      final localStream = await captureService.startCapture(source: source);
-      await webrtcManager.addLocalStream(localStream);
+      if (!webrtcManager.hasLocalStream) {
+        final localStream = await captureService.startCapture(source: effectiveSource);
+        await webrtcManager.addLocalStream(localStream);
+      }
     } catch (e) {
       logError('Failed to capture screen stream: $e');
       return;
@@ -221,7 +246,11 @@ class SessionController extends StateNotifier<SessionState> {
             port: 0,
             deviceType: DeviceType.unknown,
           );
-          startCall(newPeer); // Sender initiates WebRTC offer
+          bindRemotePeer(newPeer);
+          
+          if (webrtcManager.hasLocalStream) {
+            startCall(newPeer); // Sender initiates WebRTC offer
+          }
         }
         break;
       case SignalingMessageType.offer:

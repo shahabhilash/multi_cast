@@ -8,6 +8,8 @@ import 'dart:math';
 import '../../core/enums/stream_role.dart';
 import '../../core/constants/app_constants.dart';
 import '../../data/models/capture_source.dart';
+import '../widgets/source_selector_dialog.dart';
+import '../../data/services/screen_capture_service.dart';
 
 class SenderScreen extends ConsumerStatefulWidget {
   final PeerDevice? targetPeer;
@@ -21,12 +23,14 @@ class SenderScreen extends ConsumerStatefulWidget {
 class _SenderScreenState extends ConsumerState<SenderScreen> {
   bool _showHud = true;
   String? _roomCode;
+  bool _isCapturing = false;
 
   @override
   void initState() {
     super.initState();
     if (widget.targetPeer != null) {
       // Local network peer
+      _isCapturing = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         ref.read(sessionProvider.notifier).startCall(widget.targetPeer!, source: widget.captureSource);
       });
@@ -55,8 +59,7 @@ class _SenderScreenState extends ConsumerState<SenderScreen> {
   Widget build(BuildContext context) {
     final sessionState = ref.watch(sessionProvider);
     final telemetry = sessionState.telemetry;
-    final isBroadcasting = sessionState.connectionState == AppConnectionState.connected || 
-                           sessionState.connectionState == AppConnectionState.connecting;
+    final isBroadcasting = _isCapturing;
 
     ref.listen<SessionState>(sessionProvider, (previous, next) {
       if (previous?.errorLogs.length != next.errorLogs.length && next.errorLogs.isNotEmpty) {
@@ -177,19 +180,41 @@ class _SenderScreenState extends ConsumerState<SenderScreen> {
                   ),
                   const SizedBox(height: 48),
                   ElevatedButton(
-                    onPressed: () {
+                    onPressed: () async {
                       if (isBroadcasting) {
                         ref.read(sessionProvider.notifier).terminateSession();
                         if (Navigator.canPop(context)) Navigator.pop(context);
                       } else {
                         if (widget.targetPeer != null) {
                           ref.read(sessionProvider.notifier).startCall(widget.targetPeer!, source: widget.captureSource);
+                          setState(() { _isCapturing = true; });
                         } else {
-                          // Cloud stream relies on receivers joining. We don't start call here.
-                          // It starts automatically when PEER_JOINED is received.
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Waiting for peers to join via Room Code...')),
-                          );
+                          // Cloud stream logic
+                          CaptureSource? source = widget.captureSource;
+                          final captureService = ref.read(screenCaptureServiceProvider);
+                          if (source == null && captureService.isDesktop) {
+                            source = await showSourceSelectorDialog(context);
+                            if (source == null) return; // User cancelled
+                          }
+                          
+                          ref.read(sessionProvider.notifier).setCaptureSource(source);
+                          final success = await ref.read(sessionProvider.notifier).preCaptureScreen();
+                          
+                          if (success && mounted) {
+                            setState(() { _isCapturing = true; });
+                            
+                            final waitingPeer = ref.read(sessionProvider).remotePeer;
+                            if (waitingPeer != null) {
+                              ref.read(sessionProvider.notifier).startCall(waitingPeer);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Screen captured! Connecting to waiting peer...')),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Screen captured! Waiting for peers to join via Room Code...')),
+                              );
+                            }
+                          }
                         }
                       }
                     },

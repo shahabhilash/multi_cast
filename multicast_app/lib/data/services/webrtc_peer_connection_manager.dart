@@ -26,6 +26,8 @@ class WebrtcPeerConnectionManager {
 
   MediaStream? _localStream;
   MediaStream? _remoteStream;
+  
+  bool get hasLocalStream => _localStream != null;
 
   Future<void> initializePeerConnection() async {
     _peerConnection = await createPeerConnection(WebRTCConfig.defaultConfiguration);
