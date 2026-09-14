@@ -1,15 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/theme_provider.dart';
-import '../widgets/network_status_bar.dart';
-import '../widgets/device_card.dart';
-import '../controllers/discovery_controller.dart';
 import '../../core/enums/stream_role.dart';
 import '../controllers/session_controller.dart';
-import '../widgets/source_selector_dialog.dart';
-import '../../data/services/screen_capture_service.dart';
-import '../../data/models/peer_device.dart';
-import '../../data/models/capture_source.dart';
+import '../controllers/discovery_controller.dart';
 import '../../core/constants/app_constants.dart';
 import 'sender_screen.dart';
 import 'receiver_screen.dart';
@@ -23,6 +17,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   final _roomCodeController = TextEditingController();
+  bool _isHoveringStart = false;
 
   @override
   void dispose() {
@@ -30,99 +25,54 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.dispose();
   }
 
-  @override
-  void initState() {
-    super.initState();
-    // Start discovery when screen loads
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(discoveryProvider.notifier).startDiscovery();
-    });
+  void _startBroadcast() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const SenderScreen(
+          targetPeer: null, // Cloud stream
+          captureSource: null,
+        ),
+      ),
+    );
   }
 
-  void _showConnectionDialog(BuildContext context, PeerDevice peer, WidgetRef ref) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.screen_share),
-                title: const Text('Cast to Peer'),
-                onTap: () async {
-                  Navigator.pop(context);
-                  
-                  final captureService = ref.read(screenCaptureServiceProvider);
-                  CaptureSource? source;
-                  if (captureService.isDesktop) {
-                    source = await showSourceSelectorDialog(context);
-                    if (source == null) return; // User cancelled
-                  }
+  void _joinBroadcast() {
+    final roomCode = _roomCodeController.text.trim();
+    if (roomCode.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid room code.')),
+      );
+      return;
+    }
 
-                  if (!context.mounted) return;
+    final localIp = ref.read(discoveryProvider).localIp ?? 'receiver_${DateTime.now().millisecondsSinceEpoch}';
+    
+    ref.read(sessionProvider.notifier).initializeSession(
+      StreamRole.receiver,
+      serverUrl: AppConstants.defaultSignalingUrl,
+      roomId: roomCode,
+      localPeerId: localIp,
+    );
 
-                  final signalingUrl = 'ws://${peer.ipAddress}:8080';
-                  final localIp = ref.read(discoveryProvider).localIp ?? 'sender_${DateTime.now().millisecondsSinceEpoch}';
-                  
-                  ref.read(sessionProvider.notifier).initializeSession(
-                    StreamRole.sender,
-                    serverUrl: signalingUrl,
-                    roomId: 'room_1', // Default room
-                    localPeerId: localIp,
-                  );
-
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => SenderScreen(
-                        targetPeer: peer,
-                        captureSource: source,
-                      ),
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.connected_tv),
-                title: const Text('Receive Stream'),
-                onTap: () {
-                  Navigator.pop(context);
-                  
-                  final signalingUrl = 'ws://${peer.ipAddress}:8080';
-                  final localIp = ref.read(discoveryProvider).localIp ?? 'receiver_${DateTime.now().millisecondsSinceEpoch}';
-                  
-                  ref.read(sessionProvider.notifier).initializeSession(
-                    StreamRole.receiver,
-                    serverUrl: signalingUrl,
-                    roomId: 'room_1',
-                    localPeerId: localIp,
-                  );
-
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ReceiverScreen(),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        );
-      },
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ReceiverScreen(),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final discoveryState = ref.watch(discoveryProvider);
     final themeMode = ref.watch(themeModeProvider);
     final isDark = themeMode == ThemeMode.dark;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('MultiCast'),
+        title: const Text('MultiCast', style: TextStyle(fontWeight: FontWeight.bold)),
+        centerTitle: true,
         actions: [
           IconButton(
             icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
@@ -132,169 +82,182 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             },
             tooltip: 'Toggle Theme',
           ),
-          if (discoveryState.isDiscovering)
-            const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            )
-          else
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: () {
-                ref.read(discoveryProvider.notifier).startDiscovery();
-              },
-            ),
         ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const NetworkStatusBar(),
-              const SizedBox(height: 24),
               Text(
-                'Quick Actions',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Please select a peer from the list below to cast.')),
-                        );
-                      },
-                      icon: const Icon(Icons.screen_share),
-                      label: const Text('Share My Screen'),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 20),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Please select a peer from the list below to receive a stream.')),
-                        );
-                      },
-                      icon: const Icon(Icons.connected_tv),
-                      label: const Text('Join a Screen'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 20),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 32),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Discovered Peers',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  Text(
-                    '${discoveryState.discoveredPeers.length} found',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.grey,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              if (discoveryState.discoveredPeers.isEmpty)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(32.0),
-                    child: Text(
-                      'Searching for peers on your local network...',
-                      style: TextStyle(color: Colors.grey),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                )
-              else
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: discoveryState.discoveredPeers.length,
-                  itemBuilder: (context, index) {
-                    final peer = discoveryState.discoveredPeers[index];
-                    return DeviceCard(
-                      deviceName: peer.name,
-                      ipAddress: peer.ipAddress,
-                      deviceType: peer.deviceType,
-                      onTap: () {
-                        _showConnectionDialog(context, peer, ref);
-                      },
-                    );
-                  },
+                'Welcome to MultiCast',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: colorScheme.primary,
                 ),
-                
-              const SizedBox(height: 32),
-              Text(
-                'Join Cloud Stream',
-                style: Theme.of(context).textTheme.titleLarge,
+                textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
+              const SizedBox(height: 8),
+              Text(
+                'Share your screen globally with a simple room code.',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: colorScheme.onSurface.withOpacity(0.7),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 48),
+
+              // START BROADCAST CARD
+              MouseRegion(
+                onEnter: (_) => setState(() => _isHoveringStart = true),
+                onExit: (_) => setState(() => _isHoveringStart = false),
+                child: GestureDetector(
+                  onTap: _startBroadcast,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeInOut,
+                    transform: Matrix4.identity()..scale(_isHoveringStart ? 1.02 : 1.0),
+                    padding: const EdgeInsets.all(32),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          colorScheme.primary,
+                          colorScheme.secondary,
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: colorScheme.primary.withOpacity(_isHoveringStart ? 0.4 : 0.2),
+                          blurRadius: _isHoveringStart ? 24 : 12,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        const Icon(
+                          Icons.screen_share_rounded,
+                          size: 64,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Start Broadcast',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Create a room and share your screen',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.white.withOpacity(0.8),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 48),
+              
+              // JOIN BROADCAST SECTION
+              Container(
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  color: colorScheme.surface,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: colorScheme.primary.withOpacity(0.1),
+                    width: 2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: colorScheme.primaryContainer,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            Icons.meeting_room_rounded,
+                            color: colorScheme.onPrimaryContainer,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Text(
+                            'Join a Broadcast',
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    TextField(
                       controller: _roomCodeController,
-                      decoration: const InputDecoration(
-                        labelText: 'Room Code',
-                        hintText: 'e.g. 123-456',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.meeting_room),
+                      style: const TextStyle(fontSize: 24, letterSpacing: 4, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                      decoration: InputDecoration(
+                        hintText: '123-456',
+                        hintStyle: TextStyle(
+                          color: colorScheme.onSurface.withOpacity(0.3),
+                          fontWeight: FontWeight.normal,
+                          letterSpacing: 0,
+                        ),
+                        filled: true,
+                        fillColor: colorScheme.onSurface.withOpacity(0.05),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 24),
                       ),
                       keyboardType: TextInputType.text,
+                      onSubmitted: (_) => _joinBroadcast(),
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      final roomCode = _roomCodeController.text.trim();
-                      if (roomCode.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Please enter a valid room code.')),
-                        );
-                        return;
-                      }
-
-                      final localIp = ref.read(discoveryProvider).localIp ?? 'receiver_${DateTime.now().millisecondsSinceEpoch}';
-                      
-                      ref.read(sessionProvider.notifier).initializeSession(
-                        StreamRole.receiver,
-                        serverUrl: AppConstants.defaultSignalingUrl,
-                        roomId: roomCode,
-                        localPeerId: localIp,
-                      );
-
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ReceiverScreen(),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _joinBroadcast,
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 20),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          backgroundColor: colorScheme.primaryContainer,
+                          foregroundColor: colorScheme.onPrimaryContainer,
                         ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                        child: const Text(
+                          'Join Room',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                      ),
                     ),
-                    child: const Text('Join'),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
